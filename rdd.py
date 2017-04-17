@@ -18,6 +18,12 @@ def parse_interaction(line):
     if line_split[30]=='"0"':
         label = 0.0
     return LabeledPoint(label, array([float(x) for x in clean_line_split]))
+    # else:
+    #     lp = []
+    #     for num in range(0, 10):
+    #         lp.append(LabeledPoint(label, array([float(x) for x in clean_line_split])))
+    #     return lp
+        
 
 data = sc.textFile('./msbd5003/GroupProject/data/creditcard.csv')
 header = data.first()
@@ -31,11 +37,16 @@ from pyspark.mllib.tree import RandomForest, RandomForestModel
 from pyspark.mllib.util import MLUtils
 t0 = time()
 model = RandomForest.trainClassifier(training_data, numClasses=2, categoricalFeaturesInfo={},
-                                     numTrees=3, featureSubsetStrategy="auto",
-                                     impurity='gini', maxDepth=4, maxBins=32)
+                                     numTrees=3, featureSubsetStrategy="sqrt",
+                                     impurity='entropy', maxDepth=8, maxBins=100)
 predictions = model.predict(testing_data.map(lambda x: x.features))
 labelsAndPredictions = testing_data.map(lambda lp: lp.label).zip(predictions)
 testErr = labelsAndPredictions.filter(lambda (v, p): v != p).count() / float(testing_data.count())
+print ('Total count:', testing_data.count())
+print ('Fraud count in testing data: ', testing_data.filter(lambda lp: lp.label == 1.0).count())
+print ('Successfully predited: ', labelsAndPredictions.filter(lambda (v, p): v == p).count())
+print ('Failed predited: ', labelsAndPredictions.filter(lambda (v, p): v != p).count(), ". Value: ", labelsAndPredictions.filter(lambda (v, p): v != p).map(lambda (v,p): v).collect())
+#print labelsAndPredictions.filter(lambda (v, p): v == p and v == 1.0).map(lambda (v,p):  p).collect()
 tt = time() - t0
 print('Test Error = ' + str(testErr))
 print('Learned classification forest model:')
